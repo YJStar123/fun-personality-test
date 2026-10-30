@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>男娘测试 · 结果二维码解码器</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --card: rgba(255,255,255,.055);
+    --border: rgba(255,255,255,.10);
+    --text: #eef1f8;
+    --muted: #8b93a7;
+    --accent: #7c6cf5;
+    --accent-2: #38bdf8;
+    --danger: #f87171;
+    --ok: #34d399;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 32px 18px;
+    background:
+      radial-gradient(circle at 12% 12%, rgba(124,108,245,.28), transparent 45%),
+      radial-gradient(circle at 88% 82%, rgba(56,189,248,.18), transparent 45%),
+      #080b14;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app { width: min(640px, 100%); }
+
+  .header { text-align: center; margin-bottom: 28px; }
+  .badge {
+    display: inline-block;
+    font-size: 12px;
+    letter-spacing: .32em;
+    text-indent: .32em;
+    color: var(--accent-2);
+    border: 1px solid rgba(56,189,248,.35);
+    background: rgba(56,189,248,.08);
+    padding: 6px 16px;
+    border-radius: 999px;
+    margin-bottom: 20px;
+  }
+  h1 {
+    font-size: 30px;
+    line-height: 1.3;
+    letter-spacing: -.4px;
+    background: linear-gradient(120deg, #fff 20%, #a78bfa 60%, #38bdf8 95%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 12px;
+  }
+  .sub {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.8;
+  }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    padding: 28px 26px;
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    box-shadow: 0 30px 70px -34px rgba(0,0,0,.95);
+    margin-bottom: 18px;
+  }
+
+  .panel-title {
+    font-size: 13px;
+    letter-spacing: .18em;
+    color: var(--accent-2);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+
+  /* 上传区：div + flex，确保虚线框完整包裹内容 */
+  .drop-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    box-sizing: border-box;
+    border: 2px dashed rgba(255,255,255,.18);
+    border-radius: 18px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s ease, background .2s ease, transform .2s ease;
+    background: rgba(255,255,255,.02);
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .drop-zone:hover {
+    border-color: rgba(124,108,245,.7);
+    background: rgba(124,108,245,.08);
+  }
+  .drop-zone.dragover {
+    border-color: #8b7cf6;
+    background: rgba(124,108,245,.16);
+    transform: scale(1.01);
+  }
+  .drop-icon {
+    font-size: 34px;
+    margin-bottom: 12px;
+    opacity: .8;
+    line-height: 1;
+  }
+  .drop-main {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .drop-sub {
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  #fileInput { display: none; }
+
+  /* 预览 */
+  .preview-wrap {
+    display: none;
+    margin-top: 18px;
+    text-align: center;
+  }
+  .preview-wrap.show { display: block; }
+  .preview-img {
+    max-width: 100%;
+    max-height: 240px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: #fff;
+    padding: 8px;
+  }
+
+  /* 手动输入 */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: #4b5568;
+    font-size: 12px;
+    margin: 22px 0 18px;
+    letter-spacing: .2em;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 92px;
+    resize: vertical;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  textarea:focus { border-color: rgba(124,108,245,.7); }
+  textarea::placeholder { color: #4b5568; }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+
+  .btn {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    padding: 12px 24px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #7c6cf5, #a78bfa);
+    box-shadow: 0 10px 26px -10px rgba(124,108,245,.9);
+    transition: transform .18s, box-shadow .18s;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 14px 32px -10px rgba(124,108,245,1); }
+  .btn:active { transform: translateY(0); }
+  .btn.ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    box-shadow: none;
+  }
+  .btn.ghost:hover { color: #fff; border-color: rgba(255,255,255,.28); }
+
+  /* 状态提示 */
+  .status {
+    display: none;
+    margin-top: 16px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .status.show { display: block; }
+  .status.info { background: rgba(56,189,248,.10); border: 1px solid rgba(56,189,248,.28); color: #7dd3fc; }
+  .status.ok { background: rgba(52,211,153,.10); border: 1px solid rgba(52,211,153,.28); color: #6ee7b7; }
+  .status.err { background: rgba(248,113,113,.10); border: 1px solid rgba(248,113,113,.28); color: #fca5a5; }
+
+  /* 结果展示 */
+  .result { display: none; }
+  .result.show { display: block; animation: fade .4s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .score-block {
+    text-align: center;
+    padding: 8px 0 26px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .score-label {
+    font-size: 12px;
+    letter-spacing: .25em;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .score-value {
+    font-size: 52px;
+    font-weight: 800;
+    line-height: 1;
+    background: linear-gradient(120deg, #a78bfa, #38bdf8 70%, #22d3ee);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .dim-list { display: flex; flex-direction: column; gap: 18px; margin-bottom: 28px; }
+  .dim-top {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 7px;
+  }
+  .dim-name { color: #c8bffb; font-weight: 600; }
+  .dim-pct { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .dim-track {
+    height: 9px;
+    border-radius: 99px;
+    background: rgba(255,255,255,.07);
+    overflow: hidden;
+  }
+  .dim-fill {
+    height: 100%;
+    width: 0;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #7c6cf5, #38bdf8);
+    transition: width .8s cubic-bezier(.4,0,.2,1);
+  }
+
+  .raw-toggle {
+    font-size: 12.5px;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: color .2s;
+  }
+  .raw-toggle:hover { color: #fff; }
+  .raw-json {
+    display: none;
+    margin-top: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.75;
+    color: #b9c0d0;
+    background: rgba(0,0,0,.28);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .raw-json.show { display: block; }
+  .raw-json .key { color: #93c5fd; }
+  .raw-json .str { color: #86efac; }
+  .raw-json .num { color: #fbbf24; }
+
+  @media (max-width: 560px) {
+    h1 { font-size: 24px; }
+    .panel { padding: 22px 18px; border-radius: 18px; }
+    .score-value { font-size: 42px; }
+    .btn { flex: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="header">
+    <div class="badge">DECODER</div>
+    <h1>结果二维码解码器</h1>
+    <p class="sub">上传测评结果二维码，或直接粘贴编码字符串<br>自动解码并展示测评结果</p>
+  </div>
+
+  <!-- 上传二维码 -->
+  <div class="panel">
+    <p class="panel-title">方式一 · 上传二维码图片</p>
+
+    <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="点击选择二维码图片">
+      <input type="file" id="fileInput" accept="image/*">
+      <div class="drop-icon">⬆</div>
+      <div class="drop-main">点击选择二维码图片</div>
+      <div class="drop-sub">或将图片拖拽到此处</div>
+    </div>
+
+    <div class="preview-wrap" id="previewWrap">
+      <img class="preview-img" id="previewImg" alt="二维码预览">
+    </div>
+
+    <div class="status info" id="scanStatus">等待上传二维码图片…</div>
+  </div>
+
+  <!-- 手动输入 -->
+  <div class="panel">
+    <p class="panel-title">方式二 · 粘贴编码字符串</p>
+
+    <div class="divider">BASE64</div>
+
+    <textarea id="base64Input" placeholder="在此粘贴二维码解码出的 Base64 字符串，例如：eyLnlLflq5jmtYvor5Xnu7zlkIjliIYi..."></textarea>
+
+    <div class="btn-row">
+      <button class="btn" onclick="decodeFromText()">解码结果</button>
+      <button class="btn ghost" onclick="clearAll()">清空</button>
+    </div>
+
+    <div class="status" id="textStatus"></div>
+  </div>
+
+  <!-- 解码结果 -->
+  <div class="panel result" id="resultPanel">
+    <p class="panel-title">解码结果</p>
+
+    <div class="score-block">
+      <div class="score-label">男娘测试综合分</div>
+      <div class="score-value" id="scoreValue">0/250</div>
+    </div>
+
+    <div class="dim-list" id="dimList"></div>
+
+    <div class="raw-toggle" onclick="toggleRaw()">
+      <span id="rawArrow">▸</span> 查看原始 JSON
+    </div>
+    <div class="raw-json" id="rawJson"></div>
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   元素引用
+   ============================================================ */
+var dropZone = document.getElementById('dropZone');
+var fileInput = document.getElementById('fileInput');
+var previewWrap = document.getElementById('previewWrap');
+var previewImg = document.getElementById('previewImg');
+var scanStatus = document.getElementById('scanStatus');
+var textStatus = document.getElementById('textStatus');
+var base64Input = document.getElementById('base64Input');
+var resultPanel = document.getElementById('resultPanel');
+var scoreValue = document.getElementById('scoreValue');
+var dimList = document.getElementById('dimList');
+var rawJson = document.getElementById('rawJson');
+var rawArrow = document.getElementById('rawArrow');
+
+var dimOrder = ['审美偏好', '行为习惯', '心理共情', '社交亚文化'];
+
+/* ============================================================
+   上传 & 拖拽
+   ============================================================ */
+dropZone.addEventListener('click', function () {
+    fileInput.click();
+});
+
+dropZone.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        fileInput.click();
+    }
+});
+
+fileInput.addEventListener('change', function () {
+    if (fileInput.files && fileInput.files[0]) {
+        handleImageFile(fileInput.files[0]);
+    }
+});
+
+['dragenter', 'dragover'].forEach(function (evt) {
+    dropZone.addEventListener(evt, function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add('dragover');
+    });
+});
+
+['dragleave', 'drop'].forEach(function (evt) {
+    dropZone.addEventListener(evt, function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('dragover');
+    });
+});
+
+dropZone.addEventListener('drop', function (e) {
+    var files = e.dataTransfer && e.dataTransfer.files;
+    if (files && files[0] && files[0].type.indexOf('image') === 0) {
+        handleImageFile(files[0]);
+    } else {
+        setStatus(scanStatus, 'err', '请拖入一张图片文件。');
+    }
+});
+
+/* ============================================================
+   图片处理 & 二维码识别
+   ============================================================ */
+function handleImageFile(file) {
+    setStatus(scanStatus, 'info', '正在读取图片…');
+
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+        var img = new Image();
+        img.onload = function () {
+            previewImg.src = ev.target.result;
+            previewWrap.classList.add('show');
+            scanQRCode(img);
+        };
+        img.onerror = function () {
+            setStatus(scanStatus, 'err', '图片加载失败，请换一张试试。');
+        };
+        img.src = ev.target.result;
+    };
+    reader.onerror = function () {
+        setStatus(scanStatus, 'err', '文件读取失败。');
+    };
+    reader.readAsDataURL(file);
+}
+
+function scanQRCode(img) {
+    if (typeof jsQR === 'undefined') {
+        setStatus(scanStatus, 'err', '二维码识别库尚未加载完成，请稍后重试，或使用下方手动粘贴方式。');
+        return;
+    }
+
+    setStatus(scanStatus, 'info', '正在识别二维码…');
+
+    var maxSide = 1400;
+    var scale = 1;
+    if (img.width > maxSide || img.height > maxSide) {
+        scale = maxSide / Math.max(img.width, img.height);
+    }
+    var w = Math.max(1, Math.round(img.width * scale));
+    var h = Math.max(1, Math.round(img.height * scale));
+
+    var canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+
+    var imageData = ctx.getImageData(0, 0, w, h);
+    var code = jsQR(imageData.data, w, h, { inversionAttempts: 'attemptBoth' });
+
+    if (!code || !code.data) {
+        // 反色再试一次
+        var inv = ctx.getImageData(0, 0, w, h);
+        for (var i = 0; i < inv.data.length; i += 4) {
+            inv.data[i] = 255 - inv.data[i];
+            inv.data[i + 1] = 255 - inv.data[i + 1];
+            inv.data[i + 2] = 255 - inv.data[i + 2];
+        }
+        var code2 = jsQR(inv.data, w, h, { inversionAttempts: 'attemptBoth' });
+        if (code2 && code2.data) {
+            handleDecodedText(code2.data, scanStatus);
+        } else {
+            setStatus(scanStatus, 'err', '未能识别出二维码，请确保图片清晰、二维码完整。也可以把二维码中的文本复制到下方手动解码。');
+        }
+        return;
+    }
+
+    handleDecodedText(code.data, scanStatus);
+}
+
+/* ============================================================
+   手动输入解码
+   ============================================================ */
+function decodeFromText() {
+    var raw = base64Input.value.trim();
+    if (!raw) {
+        setStatus(textStatus, 'err', '请先粘贴 Base64 字符串。');
+        return;
+    }
+    raw = raw.replace(/\s+/g, '');
+    handleDecodedText(raw, textStatus);
+}
+
+/* ============================================================
+   统一解码入口
+   ============================================================ */
+function handleDecodedText(text, statusEl) {
+    var b64 = String(text).trim();
+
+    if (b64.charAt(0) === '{') {
+        try {
+            var direct = JSON.parse(b64);
+            renderResult(direct, statusEl, '检测到直接粘贴的 JSON，已解析。');
+            return;
+        } catch (e) {
+            setStatus(statusEl, 'err', '内容以 { 开头，但不是合法 JSON。');
+            return;
+        }
+    }
+
+    var jsonStr;
+    try {
+        jsonStr = decodeURIComponent(escape(atob(b64)));
+    } catch (e) {
+        setStatus(statusEl, 'err', 'Base64 解码失败，请确认字符串是否完整（可能少复制了字符或混入了空格）。');
+        return;
+    }
+
+    var data;
+    try {
+        data = JSON.parse(jsonStr);
+    } catch (e) {
+        setStatus(statusEl, 'err', '解码成功，但内容不是合法 JSON。原始内容：\n' + jsonStr);
+        return;
+    }
+
+    renderResult(data, statusEl, '解码成功。');
+}
+
+/* ============================================================
+   渲染结果
+   ============================================================ */
+function renderResult(data, statusEl, okMessage) {
+    var score = data['男娘测试综合分'];
+    var dims = data['维度百分比'];
+
+    if (score === undefined || !dims || typeof dims !== 'object') {
+        setStatus(statusEl, 'err', 'JSON 结构不符合预期，缺少「男娘测试综合分」或「维度百分比」字段。');
+        return;
+    }
+
+    setStatus(statusEl, 'ok', okMessage);
+
+    scoreValue.textContent = String(score);
+
+    dimList.innerHTML = '';
+    var keys = [];
+    dimOrder.forEach(function (k) {
+        if (dims[k] !== undefined) keys.push(k);
+    });
+    Object.keys(dims).forEach(function (k) {
+        if (keys.indexOf(k) === -1) keys.push(k);
+    });
+
+    keys.forEach(function (k) {
+        var val = Number(dims[k]);
+        if (isNaN(val)) val = 0;
+        val = Math.max(0, Math.min(100, val));
+
+        var item = document.createElement('div');
+        item.className = 'dim-item';
+        item.innerHTML =
+            '<div class="dim-top">' +
+                '<span class="dim-name">' + escapeHtml(k) + '</span>' +
+                '<span class="dim-pct">' + val + '%</span>' +
+            '</div>' +
+            '<div class="dim-track"><div class="dim-fill" data-w="' + val + '"></div></div>';
+        dimList.appendChild(item);
+    });
+
+    requestAnimationFrame(function () {
+        var fills = dimList.querySelectorAll('.dim-fill');
+        for (var i = 0; i < fills.length; i++) {
+            fills[i].style.width = fills[i].getAttribute('data-w') + '%';
+        }
+    });
+
+    rawJson.innerHTML = highlightJson(JSON.stringify(data, null, 2));
+
+    resultPanel.classList.add('show');
+
+    resultPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ============================================================
+   工具函数
+   ============================================================ */
+function setStatus(el, type, message) {
+    el.className = 'status show ' + type;
+    el.textContent = message;
+}
+
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function highlightJson(jsonStr) {
+    var escaped = escapeHtml(jsonStr);
+    escaped = escaped.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"(\s*:)?/g, function (m, inner, colon) {
+        if (colon) {
+            return '<span class="key">"' + inner + '"</span>' + colon;
+        }
+        return '<span class="str">"' + inner + '"</span>';
+    });
+    escaped = escaped.replace(/(:\s*)(-?\d+(?:\.\d+)?)/g, function (m, p1, p2) {
+        return p1 + '<span class="num">' + p2 + '</span>';
+    });
+    return escaped;
+}
+
+function toggleRaw() {
+    var shown = rawJson.classList.toggle('show');
+    rawArrow.textContent = shown ? '▾' : '▸';
+}
+
+function clearAll() {
+    base64Input.value = '';
+    textStatus.className = 'status';
+    textStatus.textContent = '';
+    resultPanel.classList.remove('show');
+    rawJson.classList.remove('show');
+    rawArrow.textContent = '▸';
+    dimList.innerHTML = '';
+    scoreValue.textContent = '0/250';
+
+    fileInput.value = '';
+    previewImg.removeAttribute('src');
+    previewWrap.classList.remove('show');
+    setStatus(scanStatus, 'info', '等待上传二维码图片…');
+}
+</script>
+
+<!-- 二维码识别库 -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+
+</body>
+</html>
